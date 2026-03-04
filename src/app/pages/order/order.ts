@@ -2,14 +2,14 @@ import { Component, signal } from '@angular/core';
 import { Header } from '../../header/header';
 import { DELIVERY_SIZES, DELIVERY_SPEEDS } from './order.config';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { UpperCasePipe } from '@angular/common';
+import { UpperCasePipe, CommonModule } from '@angular/common';
 import { DeliveryApi } from '../../services/delivery-api';
 
 declare var ymaps: any;
 
 @Component({
   selector: 'app-order',
-  imports: [Header, UpperCasePipe, ReactiveFormsModule],
+  imports: [Header, UpperCasePipe, ReactiveFormsModule, CommonModule],
   templateUrl: './order.html',
   styleUrl: './order.css',
 })
@@ -26,6 +26,7 @@ export class Order {
 
   public orderId: any = signal(null);
   public calculationResult: any = signal(null);
+  public isLoading = signal(false);
 
   constructor(private formBuilder: FormBuilder, private deliveryApi: DeliveryApi) {
     this.routeForm = this.formBuilder.group({
@@ -65,8 +66,10 @@ export class Order {
 
   public calculate() {
     this.calculationResult.set(null);
+    this.isLoading.set(true);
 
     if (!this.map || this.routeForm.invalid) {
+      this.isLoading.set(false);
       return;
     }
 
@@ -104,6 +107,7 @@ export class Order {
           duration = Math.ceil(duration - (duration * 0.30));
         }
 
+        this.isLoading.set(false);
         this.calculationResult.set({
           from,
           to,
@@ -115,11 +119,15 @@ export class Order {
           speed
         });
       } catch (err) {
+        this.isLoading.set(false);
         this.failedCalculation();
       }
     });
 
-    this.mapRoute.model.events.add('requestfail', () => this.failedCalculation());
+    this.mapRoute.model.events.add('requestfail', () => {
+      this.isLoading.set(false);
+      this.failedCalculation();
+    });
   }
 
   private failedCalculation() {
